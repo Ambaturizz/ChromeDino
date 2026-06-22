@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Motion-Controlled Dino</title>
+  <title>Fitness Dino Runner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
@@ -62,18 +62,46 @@
 
     <div id="gameOverScreen" class="overlay hidden">
       <div class="glass-panel lg-panel">
-        <h1 class="text-danger">SYSTEM FAILURE</h1>
-        <p>Collision detected. Press <span class="highlight">Jump</span> to restart.</p>
+        <h1 class="text-danger">WORKOUT COMPLETE</h1>
+        
+        <div class="stats-dashboard">
+          <div class="stat-box">
+            <span class="stat-label">SCORE</span>
+            <span id="statScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">HI-SCORE</span>
+            <span id="statHiScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">JUMPS</span>
+            <span id="statJumps" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">SQUATS</span>
+            <span id="statSquats" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">TIME</span>
+            <span id="statTime" class="stat-value">00:00</span>
+          </div>
+          <div class="stat-box highlight-box">
+            <span class="stat-label">BURNED</span>
+            <span id="statCalories" class="stat-value">0.0 kcal</span>
+          </div>
+        </div>
+
+        <p class="mt-2">Press <span class="highlight">Jump</span> to restart.</p>
       </div>
     </div>
     
     <div id="startScreen" class="overlay">
       <div class="glass-panel lg-panel">
-        <h1>NEON RUNNER</h1>
+        <h1>FITNESS RUNNER</h1>
         <p>Calibration Complete.</p>
         <p><span class="highlight">Jump</span> to jump</p>
-        <p><span class="highlight">Crouch</span> to duck</p>
-        <button id="startBtn">INITIALIZE</button>
+        <p><span class="highlight">Squat</span> to duck</p>
+        <button id="startBtn">INITIALIZE WORKOUT</button>
       </div>
     </div>
   </div>

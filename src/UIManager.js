@@ -29,7 +29,14 @@ export class UIManager {
         this.gameOverScreen.classList.add('hidden');
     }
 
-    showGameOverScreen() {
+    showDashboard(stats) {
+        document.getElementById('statScore').innerText = stats.score;
+        document.getElementById('statHiScore').innerText = stats.hiScore;
+        document.getElementById('statJumps').innerText = stats.jumps;
+        document.getElementById('statSquats').innerText = stats.squats;
+        document.getElementById('statTime').innerText = stats.duration;
+        document.getElementById('statCalories').innerText = `${stats.calories} kcal`;
+        
         setTimeout(() => {
             this.gameOverScreen.classList.remove('hidden');
         }, 800); // delay screen so shake can be seen

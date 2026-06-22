@@ -21,8 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind UI actions
     ui.onStartBtnClick(startGame);
     
-    game.onGameOver = () => {
-        ui.showGameOverScreen();
+    game.onGameOver = (stats) => {
+        ui.showDashboard(stats);
     };
     
     // Initialize Pose Detection

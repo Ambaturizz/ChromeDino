@@ -12,7 +12,7 @@ export class GameEngine {
         this.scoreMgr = scoreManager;
         
         this.state = 'START'; 
-        this.gravity = 0.8; // slightly higher gravity for snappier feel
+        this.gravity = 0.8;
         this.frame = 0;
         this.animationId = null;
         
@@ -33,7 +33,7 @@ export class GameEngine {
         const rect = this.canvas.parentElement.getBoundingClientRect();
         this.canvas.width = rect.width;
         this.canvas.height = rect.height;
-        const groundY = this.canvas.height - 120; // higher ground
+        const groundY = this.canvas.height - 120;
         this.dino.resize(groundY);
     }
 
@@ -41,7 +41,7 @@ export class GameEngine {
         this.state = 'PLAYING';
         this.frame = 0;
         this.shakeTime = 0;
-        this.scoreMgr.reset();
+        this.scoreMgr.reset(); // Also starts fitness recording timer
         this.dino.reset();
         this.obstaclesMgr.reset();
         this.particles.particles = [];
@@ -56,9 +56,12 @@ export class GameEngine {
         if (action === 'JUMP' && !this.dino.isJumping) {
             this.dino.jump();
             this.sound.playJump();
-            // Spawn particles at feet
             this.particles.spawn(this.dino.x + this.dino.width/2, this.dino.groundY, 15);
+            this.scoreMgr.addJump();
         } else if (action === 'CROUCH_ON') {
+            if (!this.dino.isCrouching && !this.dino.isJumping) {
+                this.scoreMgr.addSquat(); // Record squat only when starting to crouch
+            }
             this.dino.crouch(true);
         } else if (action === 'CROUCH_OFF') {
             this.dino.crouch(false);
@@ -93,7 +96,6 @@ export class GameEngine {
     draw() {
         this.ctx.save();
         
-        // Screen shake
         if (this.shakeTime > 0) {
             const dx = (Math.random() - 0.5) * 20;
             const dy = (Math.random() - 0.5) * 20;
@@ -102,10 +104,8 @@ export class GameEngine {
         
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Grid background for futuristic feel
         this.drawGrid();
 
-        // Glowing Ground Line
         this.ctx.beginPath();
         this.ctx.moveTo(0, this.dino.groundY);
         this.ctx.lineTo(this.canvas.width, this.dino.groundY);
@@ -128,7 +128,6 @@ export class GameEngine {
         this.ctx.lineWidth = 1;
         const gridSize = 50;
         
-        // Move grid with speed
         const offset = (this.frame * this.obstaclesMgr.speed) % gridSize;
         
         this.ctx.beginPath();
@@ -149,7 +148,6 @@ export class GameEngine {
             this.draw();
             this.animationId = requestAnimationFrame(() => this.loop());
         } else if (this.state === 'GAME_OVER' && this.shakeTime > 0) {
-            // Keep drawing to show screen shake then stop
             this.shakeTime--;
             this.draw();
             this.animationId = requestAnimationFrame(() => this.loop());
@@ -158,10 +156,11 @@ export class GameEngine {
 
     gameOver() {
         this.state = 'GAME_OVER';
-        this.shakeTime = 30; // 30 frames of shake
+        this.shakeTime = 30; 
         this.sound.playCrash();
         this.particles.spawn(this.dino.x + this.dino.width/2, this.dino.y + this.dino.height/2, 50);
-        this.scoreMgr.checkHiScore();
-        if (this.onGameOver) this.onGameOver();
+        
+        const stats = this.scoreMgr.calculateStats();
+        if (this.onGameOver) this.onGameOver(stats);
     }
 }
