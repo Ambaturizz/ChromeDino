@@ -1,73 +1,67 @@
-import { PoseDetector } from './pose.js';
-import { GameEngine } from './game.js';
+import { UIManager } from './UIManager.js';
+import { ScoreManager } from './ScoreManager.js';
+import { PoseDetector } from './PoseDetector.js';
+import { GameEngine } from './GameEngine.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const game = new GameEngine('gameCanvas');
+    // Initialize Managers
+    const ui = new UIManager();
+    const score = new ScoreManager(ui);
+    const game = new GameEngine('gameCanvas', ui, score);
     
-    const poseStatusEl = document.getElementById('poseStatus');
-    const scoreDisplay = document.getElementById('scoreDisplay');
-    const startScreen = document.getElementById('startScreen');
-    const gameOverScreen = document.getElementById('gameOverScreen');
-    const startBtn = document.getElementById('startBtn');
+    // Hide start screen initially until calibration is done
+    document.getElementById('startScreen').classList.add('hidden');
     
-    // Callbacks
-    game.onScoreUpdate = (score) => {
-        scoreDisplay.innerText = String(score).padStart(5, '0');
-    };
-    
-    game.onGameOver = () => {
-        gameOverScreen.classList.remove('hidden');
-    };
-    
-    startBtn.addEventListener('click', () => {
-        startGame();
-    });
-
     const startGame = () => {
-        startScreen.classList.add('hidden');
-        gameOverScreen.classList.add('hidden');
+        ui.hideScreens();
         game.start();
         detector.resetBaseline(); // Reset baseline on start
     };
     
+    // Bind UI actions
+    ui.onStartBtnClick(startGame);
+    
+    game.onGameOver = () => {
+        ui.showGameOverScreen();
+    };
+    
     // Initialize Pose Detection
-    const detector = new PoseDetector((status) => {
-        // Update UI
-        poseStatusEl.innerText = status;
-        poseStatusEl.className = `status-value ${status.toLowerCase()}`;
+    const detector = new PoseDetector(ui, (status) => {
+        ui.updatePoseStatus(status);
         
-        // Handle Game Input
+        // Handle Game Input based on Pose
         if (status === 'JUMPING') {
             if (game.state === 'PLAYING') {
-                game.jump();
+                game.handleInput('JUMP');
             } else if (game.state === 'START' || game.state === 'GAME_OVER') {
-                startGame();
+                // If calibration is done, jump can start/restart
+                if(detector.isCalibrated) startGame();
             }
         }
         
         if (status === 'CROUCHING') {
             if (game.state === 'PLAYING') {
-                game.crouch(true);
+                game.handleInput('CROUCH_ON');
             }
         } else {
-            // Standing or Jumping means not crouching
+            // STANDING or JUMPING means not crouching
             if (game.state === 'PLAYING') {
-                game.crouch(false);
+                game.handleInput('CROUCH_OFF');
             }
         }
     });
 
-    // Keyboard fallback for testing
+    // Keyboard fallback for testing/debugging
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp') {
             if (game.state === 'PLAYING') {
-                game.jump();
+                game.handleInput('JUMP');
             } else {
-                startGame();
+                if(detector.isCalibrated) startGame();
             }
         } else if (e.code === 'ArrowDown') {
             if (game.state === 'PLAYING') {
-                game.crouch(true);
+                game.handleInput('CROUCH_ON');
             }
         }
     });
@@ -75,12 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keyup', (e) => {
         if (e.code === 'ArrowDown') {
             if (game.state === 'PLAYING') {
-                game.crouch(false);
+                game.handleInput('CROUCH_OFF');
             }
         }
     });
     
-    // Draw initial empty game state
-    game.resize();
+    // Initial draw
     game.draw();
 });

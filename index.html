@@ -16,7 +16,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body>
+  <div class="futuristic-bg"></div>
   <div id="game-container">
+    
+    <!-- Transparent overlay for webcam -->
+    <div id="webcam-overlay">
+      <video id="input_video" autoplay playsinline></video>
+      <canvas id="output_canvas"></canvas>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
     
     <div id="ui-layer">
@@ -32,27 +40,40 @@
         <div id="poseStatus" class="status-value standing">STANDING</div>
       </div>
     </div>
-    
-    <div id="webcam-container" class="glass-panel">
-      <video id="input_video" autoplay playsinline></video>
-      <canvas id="output_canvas"></canvas>
-      <div id="loadingCam">Initializing Camera...</div>
+
+    <!-- Calibration UI -->
+    <div id="calibrationUI" class="overlay hidden">
+      <div class="glass-panel lg-panel">
+        <h1>CALIBRATION</h1>
+        <p>Berdiri tegak menghadap kamera...</p>
+        <div class="progress-container">
+            <div id="calibrationProgress" class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Cam -->
+    <div id="loadingCam" class="overlay">
+      <div class="glass-panel lg-panel">
+        <div class="spinner"></div>
+        <p class="mt-2">Loading Pose Model...</p>
+      </div>
     </div>
 
     <div id="gameOverScreen" class="overlay hidden">
       <div class="glass-panel lg-panel">
-        <h1>GAME OVER</h1>
-        <p>Press <span class="highlight">Jump</span> to restart</p>
+        <h1 class="text-danger">SYSTEM FAILURE</h1>
+        <p>Collision detected. Press <span class="highlight">Jump</span> to restart.</p>
       </div>
     </div>
     
     <div id="startScreen" class="overlay">
       <div class="glass-panel lg-panel">
-        <h1>DINO MOTION</h1>
-        <p>Stand back from the camera.</p>
-        <p><span class="highlight">Jump</span> to start & jump</p>
+        <h1>NEON RUNNER</h1>
+        <p>Calibration Complete.</p>
+        <p><span class="highlight">Jump</span> to jump</p>
         <p><span class="highlight">Crouch</span> to duck</p>
-        <button id="startBtn">READY</button>
+        <button id="startBtn">INITIALIZE</button>
       </div>
     </div>
   </div>

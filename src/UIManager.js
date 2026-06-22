@@ -7,6 +7,8 @@ export class UIManager {
         this.gameOverScreen = document.getElementById('gameOverScreen');
         this.startBtn = document.getElementById('startBtn');
         this.loadingCam = document.getElementById('loadingCam');
+        this.calibrationUI = document.getElementById('calibrationUI');
+        this.progressBar = document.getElementById('calibrationProgress');
     }
 
     updatePoseStatus(status) {
@@ -28,7 +30,9 @@ export class UIManager {
     }
 
     showGameOverScreen() {
-        this.gameOverScreen.classList.remove('hidden');
+        setTimeout(() => {
+            this.gameOverScreen.classList.remove('hidden');
+        }, 800); // delay screen so shake can be seen
     }
 
     hideScreens() {
@@ -37,7 +41,19 @@ export class UIManager {
     }
 
     hideLoadingCam() {
-        this.loadingCam.style.display = 'none';
+        this.loadingCam.classList.add('hidden');
+    }
+    
+    showCalibrationUI() {
+        this.calibrationUI.classList.remove('hidden');
+    }
+    
+    hideCalibrationUI() {
+        this.calibrationUI.classList.add('hidden');
+    }
+    
+    updateCalibrationProgress(percent) {
+        this.progressBar.style.width = `${percent}%`;
     }
 
     onStartBtnClick(callback) {
