@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motion-Controlled Dino</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+
+  <!-- MediaPipe Pose -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+      <div class="score-board glass-panel">
+        <div class="score-label">HI-SCORE</div>
+        <div id="hiScoreDisplay">00000</div>
+        <div class="score-label mt-2">SCORE</div>
+        <div id="scoreDisplay">00000</div>
+      </div>
+      
+      <div class="status-board glass-panel">
+        <div class="status-label">POSE DETECTED</div>
+        <div id="poseStatus" class="status-value standing">STANDING</div>
+      </div>
+    </div>
+    
+    <div id="webcam-container" class="glass-panel">
+      <video id="input_video" autoplay playsinline></video>
+      <canvas id="output_canvas"></canvas>
+      <div id="loadingCam">Initializing Camera...</div>
+    </div>
+
+    <div id="gameOverScreen" class="overlay hidden">
+      <div class="glass-panel lg-panel">
+        <h1>GAME OVER</h1>
+        <p>Press <span class="highlight">Jump</span> to restart</p>
+      </div>
+    </div>
+    
+    <div id="startScreen" class="overlay">
+      <div class="glass-panel lg-panel">
+        <h1>DINO MOTION</h1>
+        <p>Stand back from the camera.</p>
+        <p><span class="highlight">Jump</span> to start & jump</p>
+        <p><span class="highlight">Crouch</span> to duck</p>
+        <button id="startBtn">READY</button>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
