@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Fitness Dino Runner</title>
+  <meta name="description" content="Motion-controlled Chrome Dino remake with day/night cycle, weather, and fitness tracking." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
@@ -16,96 +17,121 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body>
-  <div class="futuristic-bg"></div>
+
   <div id="game-container">
-    
-    <!-- Transparent overlay for webcam -->
+
+    <!-- Transparent webcam AR overlay (z-index: 1, behind canvas) -->
     <div id="webcam-overlay">
       <video id="input_video" autoplay playsinline></video>
       <canvas id="output_canvas"></canvas>
     </div>
 
+    <!-- Main game canvas (z-index: 2) -->
     <canvas id="gameCanvas"></canvas>
-    
+
+    <!-- HUD (z-index: 10) -->
     <div id="ui-layer">
       <div class="score-board glass-panel">
         <div class="score-label">HI-SCORE</div>
         <div id="hiScoreDisplay">00000</div>
-        <div class="score-label mt-2">SCORE</div>
+        <div class="score-label mt-sm">SCORE</div>
         <div id="scoreDisplay">00000</div>
       </div>
-      
+
       <div class="status-board glass-panel">
-        <div class="status-label">POSE DETECTED</div>
+        <div class="score-label">POSE</div>
         <div id="poseStatus" class="status-value standing">STANDING</div>
+        <div class="score-label mt-sm">WEATHER</div>
+        <div id="weatherLabel" class="weather-value">☀️ CLEAR</div>
       </div>
     </div>
 
-    <!-- Calibration UI -->
+    <!-- ── Overlays ──────────────────────────────────────────────────────── -->
+
+    <!-- Loading screen -->
+    <div id="loadingCam" class="overlay">
+      <div class="glass-panel lg-panel">
+        <div class="spinner"></div>
+        <h2 class="mt-sm">Loading Pose Model…</h2>
+        <p>Please allow camera access.</p>
+      </div>
+    </div>
+
+    <!-- Calibration screen -->
     <div id="calibrationUI" class="overlay hidden">
       <div class="glass-panel lg-panel">
         <h1>CALIBRATION</h1>
-        <p>Berdiri tegak menghadap kamera...</p>
+        <p>Stand upright and face the camera.</p>
+        <p>Keep still while the bar fills…</p>
         <div class="progress-container">
-            <div id="calibrationProgress" class="progress-bar"></div>
+          <div id="calibrationProgress" class="progress-bar"></div>
         </div>
       </div>
     </div>
 
-    <!-- Loading Cam -->
-    <div id="loadingCam" class="overlay">
+    <!-- Start screen (shown after calibration) -->
+    <div id="startScreen" class="overlay hidden">
       <div class="glass-panel lg-panel">
-        <div class="spinner"></div>
-        <p class="mt-2">Loading Pose Model...</p>
+        <h1>FITNESS RUNNER</h1>
+        <div class="controls-grid">
+          <div class="ctrl-item">
+            <span class="ctrl-icon">🦘</span>
+            <span>Jump to dodge cacti</span>
+          </div>
+          <div class="ctrl-item">
+            <span class="ctrl-icon">🏋️</span>
+            <span>Squat to dodge birds</span>
+          </div>
+        </div>
+        <button id="startBtn">INITIALIZE WORKOUT</button>
+        <p class="hint">Or press <kbd>Space</kbd> / <kbd>↑</kbd> to jump</p>
       </div>
     </div>
 
+    <!-- Game Over / Stats dashboard -->
     <div id="gameOverScreen" class="overlay hidden">
       <div class="glass-panel lg-panel">
         <h1 class="text-danger">WORKOUT COMPLETE</h1>
-        
+
         <div class="stats-dashboard">
           <div class="stat-box">
+            <span class="stat-icon">🏆</span>
             <span class="stat-label">SCORE</span>
             <span id="statScore" class="stat-value">0</span>
           </div>
           <div class="stat-box">
+            <span class="stat-icon">⭐</span>
             <span class="stat-label">HI-SCORE</span>
             <span id="statHiScore" class="stat-value">0</span>
           </div>
           <div class="stat-box">
+            <span class="stat-icon">🦘</span>
             <span class="stat-label">JUMPS</span>
             <span id="statJumps" class="stat-value">0</span>
           </div>
           <div class="stat-box">
+            <span class="stat-icon">🏋️</span>
             <span class="stat-label">SQUATS</span>
             <span id="statSquats" class="stat-value">0</span>
           </div>
           <div class="stat-box">
+            <span class="stat-icon">⏱️</span>
             <span class="stat-label">TIME</span>
             <span id="statTime" class="stat-value">00:00</span>
           </div>
           <div class="stat-box highlight-box">
+            <span class="stat-icon">🔥</span>
             <span class="stat-label">BURNED</span>
-            <span id="statCalories" class="stat-value">0.0 kcal</span>
+            <span id="statCalories" class="stat-value">0 kcal</span>
           </div>
         </div>
 
-        <p class="mt-2">Press <span class="highlight">Jump</span> to restart.</p>
+        <p class="hint mt-sm">Jump to play again</p>
       </div>
     </div>
-    
-    <div id="startScreen" class="overlay">
-      <div class="glass-panel lg-panel">
-        <h1>FITNESS RUNNER</h1>
-        <p>Calibration Complete.</p>
-        <p><span class="highlight">Jump</span> to jump</p>
-        <p><span class="highlight">Squat</span> to duck</p>
-        <button id="startBtn">INITIALIZE WORKOUT</button>
-      </div>
-    </div>
-  </div>
-  
+
+  </div><!-- #game-container -->
+
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

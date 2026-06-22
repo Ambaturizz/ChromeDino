@@ -1,138 +1,164 @@
+/**
+ * PoseDetector.js
+ * Wraps MediaPipe Pose to classify the player's pose into:
+ *   'STANDING', 'JUMPING', or 'CROUCHING'
+ *
+ * Detection is based on the vertical position of the hip midpoint
+ * (landmarks 23 & 24), with a fallback to shoulders (11 & 12)
+ * when hips are not in frame.
+ *
+ * Smoothing via Exponential Moving Average (EMA) suppresses noise /
+ * jitter so that rapid micro-movements do not trigger false inputs.
+ */
 export class PoseDetector {
+    /**
+     * @param {UIManager}  uiManager
+     * @param {Function}   onPoseUpdate  - called with 'STANDING'|'JUMPING'|'CROUCHING'
+     */
     constructor(uiManager, onPoseUpdate) {
-        this.ui = uiManager;
-        this.onPoseUpdate = onPoseUpdate; 
-        
-        this.videoElement = document.getElementById('input_video');
-        this.canvasElement = document.getElementById('output_canvas');
-        this.canvasCtx = this.canvasElement.getContext('2d');
-        
-        this.baselineY = null;
-        this.poseStatus = 'STANDING';
-        this.smoothedY = null;
-        
-        this.alpha = 0.4; 
-        
-        this.jumpThreshold = -0.04; 
-        this.crouchThreshold = 0.06;
-        
-        this.isCalibrated = false;
-        this.calibrationFrames = 0;
-        this.requiredCalibrationFrames = 60; // ~2 seconds of standing still
-        
-        this.init();
+        this.ui           = uiManager;
+        this.onPoseUpdate = onPoseUpdate;
+
+        // DOM elements
+        this.videoEl  = document.getElementById('input_video');
+        this.canvasEl = document.getElementById('output_canvas');
+        this.canvasCtx = this.canvasEl.getContext('2d');
+
+        // EMA smoothed Y coordinate of the reference body point
+        this.smoothedY    = null;
+        this.EMA_ALPHA    = 0.35;   // lower = smoother but more latency
+
+        // Baseline Y (standing position) – updated slowly while STANDING
+        this.baselineY    = null;
+
+        // Detection thresholds (normalised canvas coords 0–1)
+        this.JUMP_THRESHOLD   = -0.04;  // must move UP  4 % of height
+        this.CROUCH_THRESHOLD =  0.06;  // must move DOWN 6 % of height
+
+        // State
+        this.poseStatus    = 'STANDING';
+        this.isCalibrated  = false;
+        this.calibFrames   = 0;
+        this.CALIB_FRAMES  = 60; // ~2 s at 30 fps
+
+        this._initMediaPipe();
     }
 
-    init() {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private: MediaPipe setup
+    // ─────────────────────────────────────────────────────────────────────────
+
+    _initMediaPipe() {
         const pose = new Pose({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
         });
 
         pose.setOptions({
-            modelComplexity: 1,
-            smoothLandmarks: true,
-            enableSegmentation: false,
-            smoothSegmentation: false,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
+            modelComplexity        : 1,
+            smoothLandmarks        : true,
+            enableSegmentation     : false,
+            minDetectionConfidence : 0.5,
+            minTrackingConfidence  : 0.5,
         });
 
-        pose.onResults(this.onResults.bind(this));
+        pose.onResults(this._onResults.bind(this));
 
-        const camera = new Camera(this.videoElement, {
-            onFrame: async () => {
-                await pose.send({image: this.videoElement});
-            },
-            width: 640,
-            height: 480
+        const cam = new Camera(this.videoEl, {
+            onFrame: async () => pose.send({ image: this.videoEl }),
+            width : 640,
+            height: 480,
         });
-        
-        camera.start().then(() => {
+
+        cam.start().then(() => {
             this.ui.hideLoadingCam();
             this.ui.showCalibrationUI();
         });
     }
 
-    onResults(results) {
-        this.canvasCtx.save();
-        this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
-        
-        // Transparent webcam: Draw image with opacity
-        this.canvasCtx.globalAlpha = 0.2;
-        this.canvasCtx.drawImage(
-            results.image, 0, 0, this.canvasElement.width, this.canvasElement.height);
-        this.canvasCtx.globalAlpha = 1.0;
-            
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private: results handler
+    // ─────────────────────────────────────────────────────────────────────────
+
+    _onResults(results) {
+        const ctx = this.canvasCtx;
+        ctx.save();
+        ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
+
+        // Transparent ghost overlay
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(results.image, 0, 0, this.canvasEl.width, this.canvasEl.height);
+        ctx.globalAlpha = 1;
+
         if (results.poseLandmarks) {
-            drawConnectors(this.canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
-                           {color: '#0ea5e9', lineWidth: 2});
-            drawLandmarks(this.canvasCtx, results.poseLandmarks,
-                          {color: '#ffffff', lineWidth: 1, radius: 2});
-                          
-            this.detectPose(results.poseLandmarks);
+            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS,
+                { color: '#0ea5e9', lineWidth: 1.5 });
+            drawLandmarks(ctx, results.poseLandmarks,
+                { color: '#ffffff', lineWidth: 1, radius: 2 });
+
+            this._classify(results.poseLandmarks);
         }
-        this.canvasCtx.restore();
+
+        ctx.restore();
     }
 
-    detectPose(landmarks) {
-        const leftHip = landmarks[23];
-        const rightHip = landmarks[24];
-        const leftShoulder = landmarks[11];
-        const rightShoulder = landmarks[12];
-        
-        let targetY = null;
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private: pose classification
+    // ─────────────────────────────────────────────────────────────────────────
 
-        if (leftHip.visibility > 0.5 && rightHip.visibility > 0.5) {
-            targetY = (leftHip.y + rightHip.y) / 2;
-        } else if (leftShoulder.visibility > 0.5 && rightShoulder.visibility > 0.5) {
-            targetY = (leftShoulder.y + rightShoulder.y) / 2;
+    _classify(lm) {
+        const L_HIP = 23, R_HIP = 24, L_SHO = 11, R_SHO = 12;
+
+        // Choose reference point: hips preferred, shoulders as fallback
+        let rawY = null;
+        if (lm[L_HIP].visibility > 0.5 && lm[R_HIP].visibility > 0.5) {
+            rawY = (lm[L_HIP].y + lm[R_HIP].y) / 2;
+        } else if (lm[L_SHO].visibility > 0.5 && lm[R_SHO].visibility > 0.5) {
+            rawY = (lm[L_SHO].y + lm[R_SHO].y) / 2;
         } else {
-            return; 
+            return; // Not enough visibility
         }
 
-        if (this.smoothedY === null) {
-            this.smoothedY = targetY;
-        } else {
-            this.smoothedY = (this.alpha * targetY) + ((1 - this.alpha) * this.smoothedY);
-        }
-        
+        // EMA smoothing
+        this.smoothedY = this.smoothedY === null
+            ? rawY
+            : this.EMA_ALPHA * rawY + (1 - this.EMA_ALPHA) * this.smoothedY;
+
+        // ── Calibration phase ────────────────────────────────────────────────
         if (!this.isCalibrated) {
-            this.calibrationFrames++;
-            let progress = Math.min(100, (this.calibrationFrames / this.requiredCalibrationFrames) * 100);
-            this.ui.updateCalibrationProgress(progress);
-            
-            if(this.calibrationFrames >= this.requiredCalibrationFrames) {
+            this.calibFrames++;
+            this.ui.updateCalibrationProgress(
+                Math.min(100, (this.calibFrames / this.CALIB_FRAMES) * 100)
+            );
+            if (this.calibFrames >= this.CALIB_FRAMES) {
                 this.isCalibrated = true;
-                this.baselineY = this.smoothedY;
+                this.baselineY    = this.smoothedY;
                 this.ui.hideCalibrationUI();
-                this.ui.showStartScreen(); // Show start btn only after calibration
+                this.ui.showStartScreen();
             }
             return;
         }
 
-        if (this.baselineY === null) {
-            this.baselineY = this.smoothedY;
-        } else {
-            if (this.poseStatus === 'STANDING') {
-                this.baselineY = this.baselineY * 0.95 + this.smoothedY * 0.05;
-            }
+        // ── Adaptive baseline (drift slowly toward STANDING position) ─────
+        if (this.poseStatus === 'STANDING') {
+            this.baselineY = this.baselineY * 0.96 + this.smoothedY * 0.04;
         }
-        
+
         const dy = this.smoothedY - this.baselineY;
-        
-        let newStatus = 'STANDING';
-        if (dy < this.jumpThreshold) {
-            newStatus = 'JUMPING';
-        } else if (dy > this.crouchThreshold) {
-            newStatus = 'CROUCHING';
-        }
-        
-        if (newStatus !== this.poseStatus) {
-            this.poseStatus = newStatus;
-            this.onPoseUpdate(this.poseStatus);
+
+        let next = 'STANDING';
+        if (dy < this.JUMP_THRESHOLD)    next = 'JUMPING';
+        else if (dy > this.CROUCH_THRESHOLD) next = 'CROUCHING';
+
+        if (next !== this.poseStatus) {
+            this.poseStatus = next;
+            this.onPoseUpdate(next);
         }
     }
-    
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Public
+    // ─────────────────────────────────────────────────────────────────────────
+
     resetBaseline() {
         this.baselineY = null;
         this.smoothedY = null;
